@@ -638,6 +638,7 @@
                     <TextBlock Text="No devices observed yet" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
                     <TextBlock Text="Choose an adapter and start control to observe this LAN." Foreground="#A89095" HorizontalAlignment="Center" />
                   </StackPanel>
+                  <TextBlock x:Name="NoSearchResults" Grid.Row="3" IsVisible="False" Margin="20,24" HorizontalAlignment="Center" Foreground="#A89095" Text="No devices match this IP address." />
                 </Grid>
               </Border>
 

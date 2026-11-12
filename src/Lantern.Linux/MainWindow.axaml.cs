@@ -403,6 +403,8 @@ public partial class MainWindow : Window
             if (current < 0) FilteredDevices.Insert(target, ordered[target]);
             else if (current != target) FilteredDevices.Move(current, target);
         }
+        if (NoSearchResults is not null)
+            NoSearchResults.IsVisible = query.Length > 0 && Devices.Count > 0 && ordered.Length == 0;
     }
 
     private async void ApplyAllLimits_OnClick(object? sender, RoutedEventArgs eventArgs)

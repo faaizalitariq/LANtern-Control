@@ -1,0 +1,22 @@
+name: Linux build
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Install packaging dependencies
+        run: sudo apt-get update && sudo apt-get install -y squashfs-tools ethtool libpcap-dev libcap2-bin desktop-file-utils
+      - name: Test Linux app
+        run: dotnet test tests/Lantern.Linux.Tests/Lantern.Linux.Tests.csproj -c Release
+      - name: Build AppImage
+        run: bash packaging/linux/build-appimage.sh 0.1.0-faaiz.1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lantern-control-linux
+          path: outputs/*.AppImage

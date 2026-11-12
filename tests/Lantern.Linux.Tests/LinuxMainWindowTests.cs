@@ -198,6 +198,32 @@ public sealed class LinuxMainWindowTests
     }
 
     [AvaloniaFact]
+    public void SearchAndBulkLimits_UseAllOnlineClientsAndProtectGateway()
+    {
+        var window = new MainWindow(demoMode: true);
+        window.Show();
+        var search = Assert.IsType<TextBox>(window.FindControl<TextBox>("DeviceSearch"));
+        search.Text = "192.168.50.24";
+        typeof(MainWindow).GetMethod("UpdateDeviceFilter", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(window, null);
+        Assert.Single(window.FilteredDevices);
+        Assert.Equal(5, window.Devices.Count);
+
+        window.FindControl<TextBox>("BulkDownload")!.Text = "250";
+        window.FindControl<TextBox>("BulkUpload")!.Text = "50";
+        window.FindControl<Button>("ApplyAllLimits")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Assert.All(window.Devices.Where(device => device.CanControl), device =>
+        {
+            Assert.Equal(250, device.DownloadLimit);
+            Assert.Equal(50, device.UploadLimit);
+        });
+        var gateway = Assert.Single(window.Devices.Where(device => device.IsProtected));
+        Assert.Equal(0, gateway.DownloadLimit);
+        Assert.Equal(0, gateway.UploadLimit);
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public void ConnectedDeviceWithoutObservedDomains_IsStillListedOnVisitedDomainsPage()
     {
         var window = new MainWindow();

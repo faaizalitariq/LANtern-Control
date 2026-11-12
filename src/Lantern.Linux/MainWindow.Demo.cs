@@ -71,6 +71,8 @@ public partial class MainWindow
         devicesByMac[gatewaySeed.MacKey] = gateway;
         Devices.Add(gateway);
 
+        UpdateDeviceFilter();
+
         SyncDomainRuleDevices();
         var youtube = DomainBlockPresetCatalog.All.Single(preset => preset.Name == "YouTube");
         settings.BlockedDomains[DemoDevices[0].MacKey] = youtube.Domains.ToList();

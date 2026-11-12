@@ -134,6 +134,14 @@ public sealed class DeviceViewModel : INotifyPropertyChanged
         }
     }
 
+    // Used by the bulk editor after applying both limits as a single rule.
+    public void SetLimitsWithoutApplying(int download, int upload)
+    {
+        SetField(ref downloadLimit, Math.Max(0, download), nameof(DownloadLimit));
+        SetField(ref uploadLimit, Math.Max(0, upload), nameof(UploadLimit));
+        OnPropertyChanged(nameof(HasActiveRule));
+    }
+
     public bool PauseInternet
     {
         get => pauseInternet;

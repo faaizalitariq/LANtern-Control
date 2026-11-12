@@ -80,6 +80,7 @@ public partial class MainWindow : Window
     }
 
     public ObservableCollection<DeviceViewModel> Devices { get; } = [];
+    public ObservableCollection<DeviceViewModel> FilteredDevices { get; } = [];
     public ObservableCollection<DeviceViewModel> DomainRuleDevices { get; } = [];
     public ObservableCollection<DeviceActivityGroupViewModel> DeviceActivityGroups { get; } = [];
     public ObservableCollection<DomainPresetRuleViewModel> DomainPresetRules { get; } = [];
@@ -329,6 +330,7 @@ public partial class MainWindow : Window
 
         SyncDevices(snapshots.Select(snapshot =>
             devicesByMac[TrafficPolicy.NormalizeMac(snapshot.MacAddress.ToString())]).ToArray());
+        UpdateDeviceFilter();
         SyncWebsiteActivityGroups();
         SyncDomainRuleDevices();
         UpdateActivityIdentities();
@@ -383,6 +385,81 @@ public partial class MainWindow : Window
             {
                 Devices.Move(current, target);
             }
+        }
+    }
+
+    private void DeviceSearch_OnTextChanged(object? sender, TextChangedEventArgs eventArgs) =>
+        UpdateDeviceFilter();
+
+    private void UpdateDeviceFilter()
+    {
+        var query = DeviceSearch?.Text?.Trim() ?? string.Empty;
+        var ordered = Devices.Where(device => device.IpAddress.Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
+        for (var index = FilteredDevices.Count - 1; index >= 0; index--)
+            if (!ordered.Contains(FilteredDevices[index])) FilteredDevices.RemoveAt(index);
+        for (var target = 0; target < ordered.Length; target++)
+        {
+            var current = FilteredDevices.IndexOf(ordered[target]);
+            if (current < 0) FilteredDevices.Insert(target, ordered[target]);
+            else if (current != target) FilteredDevices.Move(current, target);
+        }
+    }
+
+    private async void ApplyAllLimits_OnClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (busy || (!demoMode && !engine.IsRunning))
+        {
+            SetStatus("Start control before applying limits.");
+            return;
+        }
+        if (!int.TryParse(BulkDownload.Text, out var download) || download < 0 ||
+            !int.TryParse(BulkUpload.Text, out var upload) || upload < 0)
+        {
+            SetStatus("Enter non-negative whole numbers for both limits.");
+            return;
+        }
+
+        // Search only filters the display. This action applies to all online,
+        // unprotected devices, including those hidden by the search.
+        var targets = Devices.Where(device => device.CanControl && device.IsOnline).ToArray();
+        busy = true;
+        ApplyAllLimits.IsEnabled = false;
+        UpdateButtons();
+        var applied = 0;
+        var failed = 0;
+        try
+        {
+            foreach (var device in targets)
+            {
+                var previous = new TrafficRule(device.PauseInternet, device.DownloadLimit, device.UploadLimit);
+                var rule = new TrafficRule(device.PauseInternet, download, upload);
+                try
+                {
+                    if (!demoMode) await engine.ApplyRuleAsync(device.MacKey, rule);
+                    dashboardState.ApplyTrafficRule(device.MacKey, rule);
+                    settings.Devices[device.MacKey].Alias = device.Alias;
+                    settings.Devices[device.MacKey].LastKnownIp = device.IpAddress;
+                    device.SetLimitsWithoutApplying(download, upload);
+                    applied++;
+                }
+                catch (Exception)
+                {
+                    policy.SetRule(device.MacKey, previous);
+                    failed++;
+                }
+            }
+            if (!demoMode) await settingsStore.SaveAsync(settings);
+            SetStatus($"Applied limits to {applied} devices. Failed: {failed}. Protected devices were skipped.");
+        }
+        catch (Exception exception)
+        {
+            SetStatus($"Limits applied to {applied} devices, but saving failed: {exception.Message}");
+        }
+        finally
+        {
+            busy = false;
+            ApplyAllLimits.IsEnabled = true;
+            UpdateButtons();
         }
     }
 

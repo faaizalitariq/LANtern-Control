@@ -217,7 +217,7 @@ public sealed class LinuxMainWindowTests
             Assert.Equal(250, device.DownloadLimit);
             Assert.Equal(50, device.UploadLimit);
         });
-        var gateway = Assert.Single(window.Devices.Where(device => device.IsProtected));
+        var gateway = Assert.Single(window.Devices, device => device.IsProtected);
         Assert.Equal(0, gateway.DownloadLimit);
         Assert.Equal(0, gateway.UploadLimit);
         window.Close();
